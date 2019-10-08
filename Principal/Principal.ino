@@ -1,4 +1,5 @@
 #include <SSD1306.h>
+#include <RTClib.h>
 
 #define pinINT   27 //Se não mudar para o pino 10 e continuar utilizando o 11, o core 0 entra em panico!!
 
@@ -10,6 +11,10 @@ float contaAtualMillis = 0;
 float antigoMillis = 0;
 float subMillis = 0;
 float minutos = 0;
+
+//Variaveis tempo
+float Tin  = 0;
+RTC_DS1307 rtc;
 
 //Objeto display
 SSD1306 screen(0x3c, 21, 22);
@@ -25,6 +30,13 @@ void setup() {
   
   pinMode(pinINT,INPUT_PULLUP);
   attachInterrupt(pinINT,ContaInterrupt, RISING);
+
+  while (!Serial);
+  if (! rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
+  //rtc.adjust(DateTime(2019, 9, 20, 13, 23, 0));  // (Ano,mês,dia,hora,minuto,segundo)
   
   screen.init();
   screen.setFont(ArialMT_Plain_16);
@@ -48,9 +60,14 @@ void loop() {
   Serial.print(RPM);
   Serial.print("                ");
   Serial.println(copyconta_RPM);
-  //jorge
+
   screen.clear();
   screen.drawString(20,  0, "RPM: "+String(RPM));
+
+  DateTime now = rtc.now();
+  Tin = ((now.hour()*3600)+(now.minute()*60)+(now.second())); 
+  
+  screen.drawString(20,  20, "Tempo: "+String(Tin));
   screen.display();
   
 }
