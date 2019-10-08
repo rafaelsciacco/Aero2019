@@ -48,7 +48,7 @@ void loop() {
   Serial.print(RPM);
   Serial.print("                ");
   Serial.println(copyconta_RPM);
-
+  //jorge
   screen.clear();
   screen.drawString(20,  0, "RPM: "+String(RPM));
   screen.display();
