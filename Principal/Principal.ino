@@ -1,9 +1,11 @@
-#include <SSD1306.h>
 #include <RTClib.h>
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
 #include <TinyGPS.h>
+#include <Adafruit_HMC5883_U.h>
+#include <MapFloat.h>
+#include <SSD1306.h>
 
 #define pinINT   27 
 
@@ -26,6 +28,10 @@ RTC_DS1307 rtc;
 TinyGPS gps1;
 float Altitude_soloLocal = 547.00;
 int WOW = 0;
+
+//Variaveis mag
+Adafruit_HMC5883_Unified mag = Adafruit_HMC5883_Unified(12345);
+float MagBow = 0;
 
 //Objeto display
 SSD1306 screen(0x3c, 21, 22);
@@ -206,6 +212,12 @@ void setup() {
     while (1);
   }
   //rtc.adjust(DateTime(2019, 10, 9, 10, 19, 0));  // (Ano,mês,dia,hora,minuto,segundo)
+
+  if(!mag.begin())
+  {
+    Serial.println("Ooops, no HMC5883 detected ... Check your wiring!");
+    while(1);
+  }
   
   screen.init();
   screen.setFont(ArialMT_Plain_16);
@@ -227,15 +239,18 @@ void setup() {
   appendFile(SD, "/Canarinho.txt", "YGPS  ");
   appendFile(SD, "/Canarinho.txt", "ZGPS  ");
   appendFile(SD, "/Canarinho.txt", "WOW  ");
-  appendFile(SD, "/Canarinho.txt", "VCAS  \r\n");
-
+  appendFile(SD, "/Canarinho.txt", "VCAS  ");
+  appendFile(SD, "/Canarinho.txt", "MagHead \r\n");
+  
   appendFile(SD, "/Canarinho.txt", "[segundos] ");
   appendFile(SD, "/Canarinho.txt", "[RPM] ");
   appendFile(SD, "/Canarinho.txt", "[m] ");
   appendFile(SD, "/Canarinho.txt", "[m] ");
   appendFile(SD, "/Canarinho.txt", "[m] ");
   appendFile(SD, "/Canarinho.txt", "[bit] ");
-  appendFile(SD, "/Canarinho.txt", "[m/s] \r\n");
+  appendFile(SD, "/Canarinho.txt", "[m/s] ");
+  appendFile(SD, "/Canarinho.txt", "[deg] \r\n");
+  
   //Serial.println("  RPM         copyconta_RPM");
   
 }
@@ -289,6 +304,23 @@ void loop() {
   float velocidademps; float velocidadekmph;
   velocidademps = gps1.f_speed_mps();
 
+  sensors_event_t event;
+  mag.getEvent(&event);
+  float heading = atan2(event.magnetic.y, event.magnetic.x);
+  float declinationAngle = 5.94;
+  heading += declinationAngle;
+  if(heading < 0)
+    heading += 2*PI;
+  if(heading > 2*PI)
+    heading -= 2*PI;
+  float headingDegrees = heading * 180/M_PI;
+  if(headingDegrees <= 208.00){
+    MagBow = mapFloat(headingDegrees,208.00, 0.00,0.00, 208.00);
+  }
+  if(headingDegrees > 208.00){
+    MagBow = mapFloat(headingDegrees,360.00 , 207.99, 208.01, 360.00);
+  }
+  
   appendFile(SD, "/Canarinho.txt", String(Tin).c_str());
   appendFile(SD, "/Canarinho.txt", " ");
   appendFile(SD, "/Canarinho.txt", String(RPM).c_str());
@@ -310,6 +342,8 @@ void loop() {
     appendFile(SD, "/Canarinho.txt","  ");
     appendFile(SD, "/Canarinho.txt", String(velocidademps).c_str());
   }
+  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", String(MagBow).c_str());
   appendFile(SD, "/Canarinho.txt", "\r\n");
   
 }
