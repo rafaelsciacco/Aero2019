@@ -33,6 +33,11 @@ int WOW = 0;
 Adafruit_HMC5883_Unified mag = Adafruit_HMC5883_Unified(12345);
 float MagBow = 0;
 
+//Variaveis pots
+int Pot1 = 36;
+int Pot2 = 39;
+int Pot3 = 32;
+
 //Objeto display
 SSD1306 screen(0x3c, 21, 22);
 
@@ -218,6 +223,10 @@ void setup() {
     Serial.println("Ooops, no HMC5883 detected ... Check your wiring!");
     while(1);
   }
+
+  pinMode(Pot1,INPUT);
+  pinMode(Pot2,INPUT);
+  pinMode(Pot3,INPUT);
   
   screen.init();
   screen.setFont(ArialMT_Plain_16);
@@ -240,7 +249,10 @@ void setup() {
   appendFile(SD, "/Canarinho.txt", "ZGPS  ");
   appendFile(SD, "/Canarinho.txt", "WOW  ");
   appendFile(SD, "/Canarinho.txt", "VCAS  ");
-  appendFile(SD, "/Canarinho.txt", "MagHead \r\n");
+  appendFile(SD, "/Canarinho.txt", "MagHead ");
+  appendFile(SD, "/Canarinho.txt", "ELEV  ");
+  appendFile(SD, "/Canarinho.txt", "AIL  ");
+  appendFile(SD, "/Canarinho.txt", "RUD  \r\n");
   
   appendFile(SD, "/Canarinho.txt", "[segundos] ");
   appendFile(SD, "/Canarinho.txt", "[RPM] ");
@@ -249,6 +261,9 @@ void setup() {
   appendFile(SD, "/Canarinho.txt", "[m] ");
   appendFile(SD, "/Canarinho.txt", "[bit] ");
   appendFile(SD, "/Canarinho.txt", "[m/s] ");
+  appendFile(SD, "/Canarinho.txt", "[deg] ");
+  appendFile(SD, "/Canarinho.txt", "[deg] ");
+  appendFile(SD, "/Canarinho.txt", "[deg] ");
   appendFile(SD, "/Canarinho.txt", "[deg] \r\n");
   
   //Serial.println("  RPM         copyconta_RPM");
@@ -320,6 +335,28 @@ void loop() {
   if(headingDegrees > 208.00){
     MagBow = mapFloat(headingDegrees,360.00 , 207.99, 208.01, 360.00);
   }
+
+  int valuePot_Prof  = analogRead(Pot3); 
+  if(valuePot_Prof <= 2047){
+    valuePot_Prof  =  map(valuePot_Prof,0,2047,90,0);
+  }
+  else{
+    valuePot_Prof  =  map(valuePot_Prof,2048,4095,0,-90);
+  }
+  int valuePot_Aileron  = analogRead(Pot1);
+  if(valuePot_Aileron <= 2047){
+    valuePot_Aileron  =  map(valuePot_Aileron,0,2047,90,0);
+  }
+  else{
+    valuePot_Aileron  =  map(valuePot_Aileron,2048,4095,0,-90);
+  }
+  int valuePot_Leme  = analogRead(Pot2);
+  if(valuePot_Leme <= 2047){
+    valuePot_Leme  =  map(valuePot_Leme,0,2047,90,0);
+  }
+  else{
+    valuePot_Leme  =  map(valuePot_Leme,2048,4095,0,-90);
+  }
   
   appendFile(SD, "/Canarinho.txt", String(Tin).c_str());
   appendFile(SD, "/Canarinho.txt", " ");
@@ -344,6 +381,12 @@ void loop() {
   }
   appendFile(SD, "/Canarinho.txt", "  ");
   appendFile(SD, "/Canarinho.txt", String(MagBow).c_str());
+  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", String(valuePot_Prof).c_str());
+  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", String(valuePot_Aileron).c_str());
+  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", String(valuePot_Leme).c_str());
   appendFile(SD, "/Canarinho.txt", "\r\n");
   
 }
