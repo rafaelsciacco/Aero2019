@@ -3,8 +3,9 @@
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
+#include <TinyGPS.h>
 
-#define pinINT   27 //Se não mudar para o pino 10 e continuar utilizando o 11, o core 0 entra em panico!!
+#define pinINT   27 
 
 //Variaveis rpm
 volatile int conta_RPM = 0;
@@ -18,6 +19,13 @@ float minutos = 0;
 //Variaveis tempo
 float Tin  = 0;
 RTC_DS1307 rtc;
+
+//Variaveis gps
+#define RXD2 16
+#define TXD2 17
+TinyGPS gps1;
+float Altitude_soloLocal = 547.00;
+int WOW = 0;
 
 //Objeto display
 SSD1306 screen(0x3c, 21, 22);
@@ -187,6 +195,7 @@ void testFileIO(fs::FS &fs, const char * path){
 
 void setup() {
   Serial.begin(115200);
+  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   
   pinMode(pinINT,INPUT_PULLUP);
   attachInterrupt(pinINT,ContaInterrupt, RISING);
@@ -196,7 +205,7 @@ void setup() {
     Serial.println("Couldn't find RTC");
     while (1);
   }
-  rtc.adjust(DateTime(2019, 10, 9, 10, 19, 0));  // (Ano,mês,dia,hora,minuto,segundo)
+  //rtc.adjust(DateTime(2019, 10, 9, 10, 19, 0));  // (Ano,mês,dia,hora,minuto,segundo)
   
   screen.init();
   screen.setFont(ArialMT_Plain_16);
@@ -213,10 +222,20 @@ void setup() {
   listDir   (SD, "/", 2);    
   writeFile (SD, "/Canarinho.txt", "");
   appendFile(SD, "/Canarinho.txt", "Tempo ");
-  appendFile(SD, "/Canarinho.txt", "RPM \r\n");
+  appendFile(SD, "/Canarinho.txt", "RPM ");
+  appendFile(SD, "/Canarinho.txt", "XGPS  ");
+  appendFile(SD, "/Canarinho.txt", "YGPS  ");
+  appendFile(SD, "/Canarinho.txt", "ZGPS  ");
+  appendFile(SD, "/Canarinho.txt", "WOW  ");
+  appendFile(SD, "/Canarinho.txt", "VCAS  \r\n");
 
   appendFile(SD, "/Canarinho.txt", "[segundos] ");
-  appendFile(SD, "/Canarinho.txt", "[RPM] \r\n");
+  appendFile(SD, "/Canarinho.txt", "[RPM] ");
+  appendFile(SD, "/Canarinho.txt", "[m] ");
+  appendFile(SD, "/Canarinho.txt", "[m] ");
+  appendFile(SD, "/Canarinho.txt", "[m] ");
+  appendFile(SD, "/Canarinho.txt", "[bit] ");
+  appendFile(SD, "/Canarinho.txt", "[m/s] \r\n");
   //Serial.println("  RPM         copyconta_RPM");
   
 }
@@ -246,9 +265,51 @@ void loop() {
   screen.drawString(20,  20, "Tempo: "+String(Tin));
   screen.display();
 
+  bool recebido = false;
+  while (Serial2.available()) {
+    char cIn = Serial2.read();
+    recebido = (gps1.encode(cIn) || recebido);
+  }
+  float latitude, longitude;
+  unsigned long idadeInfo;
+  gps1.f_get_position(&latitude, &longitude, &idadeInfo);
+  float altitudeGPS;
+  float altitudeResult;
+  altitudeGPS = gps1.f_altitude();
+  if ((altitudeGPS != TinyGPS::GPS_INVALID_ALTITUDE) && (altitudeGPS != 1000000)) {
+    altitudeResult = (altitudeGPS - Altitude_soloLocal);
+  if(altitudeResult > 3){
+    WOW = 1;
+  }
+  if(altitudeResult < 3){
+    WOW = 0;
+  }
+  altitudeResult = 0;
+  }
+  float velocidademps; float velocidadekmph;
+  velocidademps = gps1.f_speed_mps();
+
   appendFile(SD, "/Canarinho.txt", String(Tin).c_str());
   appendFile(SD, "/Canarinho.txt", " ");
   appendFile(SD, "/Canarinho.txt", String(RPM).c_str());
+  if (latitude != TinyGPS::GPS_INVALID_F_ANGLE) {
+    appendFile(SD, "/Canarinho.txt", "  ");
+    appendFile(SD, "/Canarinho.txt", String(latitude,6).c_str());
+  }
+  if (longitude != TinyGPS::GPS_INVALID_F_ANGLE) {
+    appendFile(SD, "/Canarinho.txt", "  ");
+    appendFile(SD, "/Canarinho.txt", String(longitude,6).c_str());
+  }
+  if ((altitudeGPS != TinyGPS::GPS_INVALID_ALTITUDE) && (altitudeGPS != 1000000)) {
+    appendFile(SD, "/Canarinho.txt", "  ");
+    appendFile(SD, "/Canarinho.txt", String(altitudeGPS).c_str());
+    appendFile(SD, "/Canarinho.txt", "  ");
+    appendFile(SD, "/Canarinho.txt", String(WOW).c_str());
+  }
+  if (velocidademps != TinyGPS::GPS_INVALID_F_SPEED){
+    appendFile(SD, "/Canarinho.txt","  ");
+    appendFile(SD, "/Canarinho.txt", String(velocidademps).c_str());
+  }
   appendFile(SD, "/Canarinho.txt", "\r\n");
   
 }
