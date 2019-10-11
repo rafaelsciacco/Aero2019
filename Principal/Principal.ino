@@ -5,6 +5,7 @@
 #include <TinyGPS.h>
 #include <Adafruit_HMC5883_U.h>
 #include <MapFloat.h>
+#include <Adafruit_BMP085.h>
 #include <SSD1306.h>
 
 #define pinINT   27 
@@ -37,6 +38,13 @@ float MagBow = 0;
 int Pot1 = 36;
 int Pot2 = 39;
 int Pot3 = 32;
+
+//Variaveis bmps
+int S0 = 0;
+int S1 = 2;
+float HP = 0;
+Adafruit_BMP085 bmp_1;
+Adafruit_BMP085 bmp_2;
 
 //Objeto display
 SSD1306 screen(0x3c, 21, 22);
@@ -227,6 +235,21 @@ void setup() {
   pinMode(Pot1,INPUT);
   pinMode(Pot2,INPUT);
   pinMode(Pot3,INPUT);
+
+  pinMode(S0,OUTPUT);
+  pinMode(S1,OUTPUT);
+  digitalWrite(S0,LOW);
+  digitalWrite(S1,LOW);
+  if(!bmp_1.begin() ){           //Verifico se o sensor BMP180 está funcionando
+    Serial.println("Sensor BMP1 não encontrado!");
+    while(1){}
+  } 
+  digitalWrite(S0,HIGH);
+  digitalWrite(S1,LOW); 
+  if(!bmp_2.begin() ){           //Verifico se o sensor BMP180 está funcionando
+    Serial.println("Sensor BMP2 não encontrado!");
+    while(1){}
+  }
   
   screen.init();
   screen.setFont(ArialMT_Plain_16);
@@ -252,7 +275,8 @@ void setup() {
   appendFile(SD, "/Canarinho.txt", "MagHead ");
   appendFile(SD, "/Canarinho.txt", "ELEV  ");
   appendFile(SD, "/Canarinho.txt", "AIL  ");
-  appendFile(SD, "/Canarinho.txt", "RUD  \r\n");
+  appendFile(SD, "/Canarinho.txt", "RUD  ");
+  appendFile(SD, "/Canarinho.txt", "HP  \r\n");
   
   appendFile(SD, "/Canarinho.txt", "[segundos] ");
   appendFile(SD, "/Canarinho.txt", "[RPM] ");
@@ -264,7 +288,8 @@ void setup() {
   appendFile(SD, "/Canarinho.txt", "[deg] ");
   appendFile(SD, "/Canarinho.txt", "[deg] ");
   appendFile(SD, "/Canarinho.txt", "[deg] ");
-  appendFile(SD, "/Canarinho.txt", "[deg] \r\n");
+  appendFile(SD, "/Canarinho.txt", "[deg] ");
+  appendFile(SD, "/Canarinho.txt", "[ft] \r\n");
   
   //Serial.println("  RPM         copyconta_RPM");
   
@@ -357,6 +382,10 @@ void loop() {
   else{
     valuePot_Leme  =  map(valuePot_Leme,2048,4095,0,-90);
   }
+
+  digitalWrite(S0,HIGH);
+  digitalWrite(S1,LOW);
+  HP = bmp_2.readAltitude(101325);
   
   appendFile(SD, "/Canarinho.txt", String(Tin).c_str());
   appendFile(SD, "/Canarinho.txt", " ");
@@ -387,6 +416,8 @@ void loop() {
   appendFile(SD, "/Canarinho.txt", String(valuePot_Aileron).c_str());
   appendFile(SD, "/Canarinho.txt", "  ");
   appendFile(SD, "/Canarinho.txt", String(valuePot_Leme).c_str());
+  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", String(HP).c_str());
   appendFile(SD, "/Canarinho.txt", "\r\n");
   
 }
