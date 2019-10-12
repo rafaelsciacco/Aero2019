@@ -6,6 +6,7 @@
 #include <Adafruit_HMC5883_U.h>
 #include <MapFloat.h>
 #include <Adafruit_BMP085.h>
+#include <Wire.h>
 #include <SSD1306.h>
 
 #define pinINT   27 
@@ -45,6 +46,15 @@ int S1 = 2;
 float HP = 0;
 Adafruit_BMP085 bmp_1;
 Adafruit_BMP085 bmp_2;
+
+//Variaveis mpu
+const int MPU_addr=0x69;
+int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
+int minVal=265;
+int maxVal=402;
+float x, y, z;
+int iteracoes = 50, contagemFiltro;
+float pitch, roll, pitchTotal, rollTotal;
 
 //Objeto display
 SSD1306 screen(0x3c, 21, 22);
@@ -250,6 +260,12 @@ void setup() {
     Serial.println("Sensor BMP2 não encontrado!");
     while(1){}
   }
+
+  Wire.begin();
+  Wire.beginTransmission(MPU_addr);
+  Wire.write(0x6B);
+  Wire.write(0);
+  Wire.endTransmission(true);
   
   screen.init();
   screen.setFont(ArialMT_Plain_16);
@@ -276,7 +292,10 @@ void setup() {
   appendFile(SD, "/Canarinho.txt", "ELEV  ");
   appendFile(SD, "/Canarinho.txt", "AIL  ");
   appendFile(SD, "/Canarinho.txt", "RUD  ");
-  appendFile(SD, "/Canarinho.txt", "HP  \r\n");
+  appendFile(SD, "/Canarinho.txt", "HP  ");
+  appendFile(SD, "/Canarinho.txt", "NZ  ");
+  appendFile(SD, "/Canarinho.txt", "THETA ");
+  appendFile(SD, "/Canarinho.txt", "PHI \r\n");
   
   appendFile(SD, "/Canarinho.txt", "[segundos] ");
   appendFile(SD, "/Canarinho.txt", "[RPM] ");
@@ -289,14 +308,17 @@ void setup() {
   appendFile(SD, "/Canarinho.txt", "[deg] ");
   appendFile(SD, "/Canarinho.txt", "[deg] ");
   appendFile(SD, "/Canarinho.txt", "[deg] ");
-  appendFile(SD, "/Canarinho.txt", "[ft] \r\n");
+  appendFile(SD, "/Canarinho.txt", "[ft] ");
+  appendFile(SD, "/Canarinho.txt", "[g] ");
+  appendFile(SD, "/Canarinho.txt", "[deg] ");
+  appendFile(SD, "/Canarinho.txt", "[deg] \r\n");
   
   //Serial.println("  RPM         copyconta_RPM");
   
 }
 
 void loop() {
-  delayMicroseconds(1000000);
+  delayMicroseconds(10000);
   
   copyconta_RPM = conta_RPM;
   contaAtualMillis = millis(); 
@@ -386,6 +408,41 @@ void loop() {
   digitalWrite(S0,HIGH);
   digitalWrite(S1,LOW);
   HP = bmp_2.readAltitude(101325);
+
+  roll = 0;
+  pitch = 0;
+  Wire.beginTransmission(MPU_addr);
+  Wire.write(0x3B);
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU_addr,14,true); 
+  AcX=Wire.read()<<8|Wire.read();
+  AcY=Wire.read()<<8|Wire.read();
+  AcZ=Wire.read()<<8|Wire.read();
+  int xAng = map(AcX,minVal,maxVal,-90,90);
+  int yAng = map(AcY,minVal,maxVal,-90,90);
+  int zAng = map(AcZ,minVal,maxVal,-90,90);
+
+  x= RAD_TO_DEG * (atan2(-yAng, -zAng)+PI);
+  y= RAD_TO_DEG * (atan2(-xAng, -zAng)+PI);
+  z= RAD_TO_DEG * (atan2(-yAng, -xAng)+PI);
+  pitch = x;
+  roll = y;
+  if(pitch > 180) pitch -= 360;
+  if(roll > 180) roll -= 360;
+
+  //Tirar comentario para testar o horizonte
+  /*if(contagemFiltro < iteracoes) {
+    contagemFiltro++;
+    pitchTotal += pitch;
+    rollTotal += roll;
+    return;
+  }
+  contagemFiltro = 0;
+  pitch = pitchTotal / iteracoes;
+  roll = rollTotal / iteracoes;
+  pitchTotal = 0;
+  rollTotal = 0;
+  */
   
   appendFile(SD, "/Canarinho.txt", String(Tin).c_str());
   appendFile(SD, "/Canarinho.txt", " ");
@@ -418,6 +475,12 @@ void loop() {
   appendFile(SD, "/Canarinho.txt", String(valuePot_Leme).c_str());
   appendFile(SD, "/Canarinho.txt", "  ");
   appendFile(SD, "/Canarinho.txt", String(HP).c_str());
+  appendFile(SD, "/Canarinho.txt", " ");
+  appendFile(SD, "/Canarinho.txt", String(AcZ/16384.0).c_str());
+  appendFile(SD, "/Canarinho.txt", " ");
+  appendFile(SD, "/Canarinho.txt", String(pitch).c_str());
+  appendFile(SD, "/Canarinho.txt", " ");
+  appendFile(SD, "/Canarinho.txt", String(roll).c_str());
   appendFile(SD, "/Canarinho.txt", "\r\n");
   
 }
