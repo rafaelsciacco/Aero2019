@@ -9,6 +9,9 @@
 #include <Wire.h>
 #include <SSD1306.h>
 
+#include <WiFi.h>
+#include <PubSubClient.h>
+
 #define pinINT   27 
 
 //Variaveis rpm
@@ -58,6 +61,14 @@ float pitch, roll, pitchTotal, rollTotal;
 
 //Objeto display
 SSD1306 screen(0x3c, 21, 22);
+
+//Declaracoes wifi
+const char* ssid = "proxy 01"; // Enter your WiFi name
+const char* password =  "lr201314"; // Enter WiFi password
+const char* mqtt_server = "test.mosquitto.org";
+const int mqtt_port = 1883;
+WiFiClient wifiClient;
+PubSubClient client(wifiClient);
 
 //Funcao interrupcao
 void IRAM_ATTR ContaInterrupt() {
@@ -222,9 +233,51 @@ void testFileIO(fs::FS &fs, const char * path){
     file.close();
 }
 
+//Funcoes wifi
+void setup_wifi() {
+    delay(10);
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(ssid);
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+    randomSeed(micros());
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+}
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Create a random client ID
+    String clientId = "ESP32Client-";
+    //clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (client.connect(clientId.c_str())){//,MQTT_USER,MQTT_PASSWORD)) {
+      Serial.println("connected");
+      } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+  
+  Serial.setTimeout(500);// Set time out for 
+  setup_wifi();
+  client.setServer(mqtt_server, mqtt_port);
+  reconnect();
   
   pinMode(pinINT,INPUT_PULLUP);
   attachInterrupt(pinINT,ContaInterrupt, RISING);
@@ -318,7 +371,7 @@ void setup() {
 }
 
 void loop() {
-  delayMicroseconds(10000);
+  //delayMicroseconds(10000);
   
   copyconta_RPM = conta_RPM;
   contaAtualMillis = millis(); 
@@ -460,13 +513,16 @@ void loop() {
     appendFile(SD, "/Canarinho.txt", String(altitudeGPS).c_str());
     appendFile(SD, "/Canarinho.txt", "  ");
     appendFile(SD, "/Canarinho.txt", String(WOW).c_str());
+    client.publish("/WOW", String(WOW).c_str());
   }
   if (velocidademps != TinyGPS::GPS_INVALID_F_SPEED){
     appendFile(SD, "/Canarinho.txt","  ");
     appendFile(SD, "/Canarinho.txt", String(velocidademps).c_str());
+    client.publish("/VCAS", String(velocidademps).c_str());
   }
   appendFile(SD, "/Canarinho.txt", "  ");
   appendFile(SD, "/Canarinho.txt", String(MagBow).c_str());
+  client.publish("/MAG", String(MagBow).c_str());
   appendFile(SD, "/Canarinho.txt", "  ");
   appendFile(SD, "/Canarinho.txt", String(valuePot_Prof).c_str());
   appendFile(SD, "/Canarinho.txt", "  ");
@@ -475,12 +531,16 @@ void loop() {
   appendFile(SD, "/Canarinho.txt", String(valuePot_Leme).c_str());
   appendFile(SD, "/Canarinho.txt", "  ");
   appendFile(SD, "/Canarinho.txt", String(HP).c_str());
+  client.publish("/HP", String(HP).c_str());
   appendFile(SD, "/Canarinho.txt", " ");
   appendFile(SD, "/Canarinho.txt", String(AcZ/16384.0).c_str());
+  client.publish("/MPUnz", String(AcZ/16384.0).c_str());
   appendFile(SD, "/Canarinho.txt", " ");
   appendFile(SD, "/Canarinho.txt", String(pitch).c_str());
+  client.publish("/MPUtheta", String(pitch).c_str());
   appendFile(SD, "/Canarinho.txt", " ");
   appendFile(SD, "/Canarinho.txt", String(roll).c_str());
+  client.publish("/MPUphi", String(roll).c_str());
   appendFile(SD, "/Canarinho.txt", "\r\n");
   
 }
