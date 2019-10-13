@@ -244,14 +244,24 @@ void setup_wifi() {
     Serial.println();
     Serial.print("Connecting to ");
     Serial.println(ssid);
+    display.clearDisplay();
+    display.setCursor(0,10);
+    display.print("Conectando a ");
+    display.println(ssid);
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
       Serial.print(".");
+      display.print(".");
+      display.display();
     }
     randomSeed(micros());
     Serial.println("");
     Serial.println("WiFi connected");
+    display.clearDisplay();
+    display.setCursor(0, 10);
+    display.println("WiFi conectado");
+    display.display();
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());
 }
@@ -259,16 +269,24 @@ void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
+    display.clearDisplay();
+    display.setCursor(0, 10);
+    display.println("Estabelecendo conexao MQTT...");
+    display.display();
     // Create a random client ID
     String clientId = "ESP32Client-";
     //clientId += String(random(0xffff), HEX);
     // Attempt to connect
     if (client.connect(clientId.c_str())){//,MQTT_USER,MQTT_PASSWORD)) {
       Serial.println("connected");
+      display.println("conectado");
+      display.display();
       } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" try again in 5 seconds");
+      display.println("falha");
+      display.display();
       // Wait 5 seconds before retrying
       delay(5000);
     }
@@ -278,11 +296,6 @@ void reconnect() {
 void setup() {
   Serial.begin(115200);
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
-  
-  Serial.setTimeout(500);// Set time out for 
-  setup_wifi();
-  client.setServer(mqtt_server, mqtt_port);
-  reconnect();
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.clearDisplay();
@@ -292,7 +305,7 @@ void setup() {
   display.dim(0);
   display.setFont(&FreeMono9pt7b);
   display.setTextSize(0);
-  
+
   pinMode(pinINT,INPUT_PULLUP);
   attachInterrupt(pinINT,ContaInterrupt, RISING);
 
@@ -304,7 +317,7 @@ void setup() {
     display.display();
     while (1);
   }
-  //rtc.adjust(DateTime(2019, 10, 9, 10, 19, 0));  // (Ano,mês,dia,hora,minuto,segundo)
+  //rtc.adjust(DateTime(2019, 10, 13, 17, 9, 0));  // (Ano,mês,dia,hora,minuto,segundo)
 
   if(!mag.begin())
   {
@@ -368,6 +381,12 @@ void setup() {
     while(1){};
     //return;
   }
+
+  Serial.setTimeout(500);// Set time out for 
+  setup_wifi();
+  client.setServer(mqtt_server, mqtt_port);
+  reconnect();
+  
   listDir   (SD, "/", 2);    
   writeFile (SD, "/Canarinho.txt", "");
   appendFile(SD, "/Canarinho.txt", "      Tempo ");
