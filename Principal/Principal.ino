@@ -7,7 +7,9 @@
 #include <MapFloat.h>
 #include <Adafruit_BMP085.h>
 #include <Wire.h>
-#include <SSD1306.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+//#include <SSD1306.h>
 
 #include <WiFi.h>
 #include <PubSubClient.h>
@@ -60,7 +62,10 @@ int iteracoes = 50, contagemFiltro;
 float pitch, roll, pitchTotal, rollTotal;
 
 //Objeto display
-SSD1306 screen(0x3c, 21, 22);
+Adafruit_SSD1306 display(128, 64);
+#include <Fonts/FreeMonoBold18pt7b.h>
+#include <Fonts/FreeMono9pt7b.h>
+//SSD1306 screen(0x3c, 21, 22);
 
 //Declaracoes wifi
 const char* ssid = "proxy 01"; // Enter your WiFi name
@@ -278,20 +283,35 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
   reconnect();
+
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setRotation(0);
+  display.setTextWrap(true);
+  display.dim(0);
+  display.setFont(&FreeMono9pt7b);
+  display.setTextSize(0);
   
   pinMode(pinINT,INPUT_PULLUP);
   attachInterrupt(pinINT,ContaInterrupt, RISING);
 
   while (!Serial);
   if (! rtc.begin()) {
-    Serial.println("Couldn't find RTC");
+    Serial.println("RTC nao detectado");
+    display.setCursor(0,25);
+    display.println("RTC nao detectado!");
+    display.display();
     while (1);
   }
   //rtc.adjust(DateTime(2019, 10, 9, 10, 19, 0));  // (Ano,mês,dia,hora,minuto,segundo)
 
   if(!mag.begin())
   {
-    Serial.println("Ooops, no HMC5883 detected ... Check your wiring!");
+    Serial.println("HMC5883 nao detectado");
+    display.setCursor(0,25);
+    display.println("HMC5883 nao detectado!");
+    display.display();
     while(1);
   }
 
@@ -303,14 +323,20 @@ void setup() {
   pinMode(S1,OUTPUT);
   digitalWrite(S0,LOW);
   digitalWrite(S1,LOW);
-  if(!bmp_1.begin() ){           //Verifico se o sensor BMP180 está funcionando
-    Serial.println("Sensor BMP1 não encontrado!");
+  if(!bmp_1.begin() ){
+    Serial.println("Sensor BMP1 não detectado!");
+    display.setCursor(0,25);
+    display.println("Sensor BMP1 nao detectado!");
+    display.display();
     while(1){}
   } 
   digitalWrite(S0,HIGH);
   digitalWrite(S1,LOW); 
-  if(!bmp_2.begin() ){           //Verifico se o sensor BMP180 está funcionando
-    Serial.println("Sensor BMP2 não encontrado!");
+  if(!bmp_2.begin() ){
+    Serial.println("Sensor BMP2 não detectado!");
+    display.setCursor(0,25);
+    display.println("Sensor BMP2 nao detectado!");
+    display.display();
     while(1){}
   }
 
@@ -320,51 +346,61 @@ void setup() {
   Wire.write(0);
   Wire.endTransmission(true);
   
-  screen.init();
+  /*screen.init();
   screen.setFont(ArialMT_Plain_16);
-
+  screen.flipScreenVertically();
+  screen.setTextAlignment(TEXT_ALIGN_RIGHT);*/
+  
   if(!SD.begin()){
     Serial.println("Card Mount Failed");
-    return;
+    display.setCursor(0,25);
+    display.println("FALHA AO MONTAR CARTAO");
+    display.display();
+    while(1){};
+    //return;
   }
   uint8_t cardType = SD.cardType();
   if(cardType == CARD_NONE){
     Serial.println("No SD card attached");
-    return;
+    display.setCursor(0,25);
+    display.println("Cartao SD nao detectado!");
+    display.display();
+    while(1){};
+    //return;
   }
   listDir   (SD, "/", 2);    
   writeFile (SD, "/Canarinho.txt", "");
-  appendFile(SD, "/Canarinho.txt", "Tempo ");
-  appendFile(SD, "/Canarinho.txt", "RPM ");
-  appendFile(SD, "/Canarinho.txt", "XGPS  ");
-  appendFile(SD, "/Canarinho.txt", "YGPS  ");
-  appendFile(SD, "/Canarinho.txt", "ZGPS  ");
-  appendFile(SD, "/Canarinho.txt", "WOW  ");
-  appendFile(SD, "/Canarinho.txt", "VCAS  ");
-  appendFile(SD, "/Canarinho.txt", "MagHead ");
-  appendFile(SD, "/Canarinho.txt", "ELEV  ");
-  appendFile(SD, "/Canarinho.txt", "AIL  ");
-  appendFile(SD, "/Canarinho.txt", "RUD  ");
-  appendFile(SD, "/Canarinho.txt", "HP  ");
-  appendFile(SD, "/Canarinho.txt", "NZ  ");
-  appendFile(SD, "/Canarinho.txt", "THETA ");
-  appendFile(SD, "/Canarinho.txt", "PHI \r\n");
+  appendFile(SD, "/Canarinho.txt", "      Tempo ");
+  appendFile(SD, "/Canarinho.txt", "      RPM ");
+  appendFile(SD, "/Canarinho.txt", "          XGPS  ");
+  appendFile(SD, "/Canarinho.txt", "           YGPS  ");
+  appendFile(SD, "/Canarinho.txt", "        ZGPS  ");
+  appendFile(SD, "/Canarinho.txt", "      WOW  ");
+  appendFile(SD, "/Canarinho.txt", "      VCAS  ");
+  appendFile(SD, "/Canarinho.txt", "      MagHead ");
+  appendFile(SD, "/Canarinho.txt", "      ELEV  ");
+  appendFile(SD, "/Canarinho.txt", "      AIL  ");
+  appendFile(SD, "/Canarinho.txt", "      RUD  ");
+  appendFile(SD, "/Canarinho.txt", "      HP  ");
+  appendFile(SD, "/Canarinho.txt", "      NZ  ");
+  appendFile(SD, "/Canarinho.txt", "      THETA ");
+  appendFile(SD, "/Canarinho.txt", "      PHI \r\n");
   
-  appendFile(SD, "/Canarinho.txt", "[segundos] ");
-  appendFile(SD, "/Canarinho.txt", "[RPM] ");
-  appendFile(SD, "/Canarinho.txt", "[m] ");
-  appendFile(SD, "/Canarinho.txt", "[m] ");
-  appendFile(SD, "/Canarinho.txt", "[m] ");
-  appendFile(SD, "/Canarinho.txt", "[bit] ");
-  appendFile(SD, "/Canarinho.txt", "[m/s] ");
-  appendFile(SD, "/Canarinho.txt", "[deg] ");
-  appendFile(SD, "/Canarinho.txt", "[deg] ");
-  appendFile(SD, "/Canarinho.txt", "[deg] ");
-  appendFile(SD, "/Canarinho.txt", "[deg] ");
-  appendFile(SD, "/Canarinho.txt", "[ft] ");
-  appendFile(SD, "/Canarinho.txt", "[g] ");
-  appendFile(SD, "/Canarinho.txt", "[deg] ");
-  appendFile(SD, "/Canarinho.txt", "[deg] \r\n");
+  appendFile(SD, "/Canarinho.txt", "    [segundos] ");
+  appendFile(SD, "/Canarinho.txt", "  [RPM] ");
+  appendFile(SD, "/Canarinho.txt", "         [m] ");
+  appendFile(SD, "/Canarinho.txt", "             [m] ");
+  appendFile(SD, "/Canarinho.txt", "          [m] ");
+  appendFile(SD, "/Canarinho.txt", "       [bit] ");
+  appendFile(SD, "/Canarinho.txt", "      [m/s] ");
+  appendFile(SD, "/Canarinho.txt", "       [deg] ");
+  appendFile(SD, "/Canarinho.txt", "       [deg] ");
+  appendFile(SD, "/Canarinho.txt", "     [deg] ");
+  appendFile(SD, "/Canarinho.txt", "     [deg] ");
+  appendFile(SD, "/Canarinho.txt", "     [ft] ");
+  appendFile(SD, "/Canarinho.txt", "      [g] ");
+  appendFile(SD, "/Canarinho.txt", "      [deg] ");
+  appendFile(SD, "/Canarinho.txt", "     [deg] \r\n");
   
   //Serial.println("  RPM         copyconta_RPM");
   
@@ -372,7 +408,6 @@ void setup() {
 
 void loop() {
   //delayMicroseconds(10000);
-  
   copyconta_RPM = conta_RPM;
   contaAtualMillis = millis(); 
   subMillis = contaAtualMillis - antigoMillis;
@@ -386,14 +421,28 @@ void loop() {
   //Serial.print("                ");
   //Serial.println(copyconta_RPM);
 
-  screen.clear();
-  screen.drawString(20,  0, "RPM: "+String(RPM));
+  //screen.clear();
+  //screen.drawString(20,  0, "RPM: "+String(RPM));
+  char stringrpm[10]; char stringtempo[10];
+  dtostrf(RPM, 6, 0, stringrpm);
+  display.clearDisplay();
+  display.setCursor(0, 45);
+  display.println("RPM:");
+  display.setCursor(0, 60);
+  display.print(stringrpm);
+  display.println("[RPM]");
 
   DateTime now = rtc.now();
-  Tin = ((now.hour()*3600)+(now.minute()*60)+(now.second())); 
-  
-  screen.drawString(20,  20, "Tempo: "+String(Tin));
-  screen.display();
+  Tin = ((now.hour()*3600)+(now.minute()*60)+(now.second()));
+  dtostrf(Tin, 6, 0, stringtempo);
+  display.setCursor(0, 10);
+  display.println("Tempo:");
+  display.setCursor(0, 27);
+  display.print(stringtempo);
+  display.println("[segs]");
+  display.display();
+  //screen.drawString(20,  20, "Tempo: "+String(Tin));
+  //screen.display();
 
   bool recebido = false;
   while (Serial2.available()) {
@@ -496,49 +545,49 @@ void loop() {
   pitchTotal = 0;
   rollTotal = 0;
   */
-  
+  appendFile(SD, "/Canarinho.txt", "     ");
   appendFile(SD, "/Canarinho.txt", String(Tin).c_str());
-  appendFile(SD, "/Canarinho.txt", " ");
+  appendFile(SD, "/Canarinho.txt", "    ");
   appendFile(SD, "/Canarinho.txt", String(RPM).c_str());
   if (latitude != TinyGPS::GPS_INVALID_F_ANGLE) {
-    appendFile(SD, "/Canarinho.txt", "  ");
+    appendFile(SD, "/Canarinho.txt", "        ");
     appendFile(SD, "/Canarinho.txt", String(latitude,6).c_str());
   }
   if (longitude != TinyGPS::GPS_INVALID_F_ANGLE) {
-    appendFile(SD, "/Canarinho.txt", "  ");
+    appendFile(SD, "/Canarinho.txt", "       ");
     appendFile(SD, "/Canarinho.txt", String(longitude,6).c_str());
   }
   if ((altitudeGPS != TinyGPS::GPS_INVALID_ALTITUDE) && (altitudeGPS != 1000000)) {
-    appendFile(SD, "/Canarinho.txt", "  ");
+    appendFile(SD, "/Canarinho.txt", "      ");
     appendFile(SD, "/Canarinho.txt", String(altitudeGPS).c_str());
-    appendFile(SD, "/Canarinho.txt", "  ");
+    appendFile(SD, "/Canarinho.txt", "        ");
     appendFile(SD, "/Canarinho.txt", String(WOW).c_str());
     client.publish("/WOW", String(WOW).c_str());
   }
   if (velocidademps != TinyGPS::GPS_INVALID_F_SPEED){
-    appendFile(SD, "/Canarinho.txt","  ");
+    appendFile(SD, "/Canarinho.txt","         ");
     appendFile(SD, "/Canarinho.txt", String(velocidademps).c_str());
     client.publish("/VCAS", String(velocidademps).c_str());
   }
-  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", "        ");
   appendFile(SD, "/Canarinho.txt", String(MagBow).c_str());
   client.publish("/MAG", String(MagBow).c_str());
-  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", "         ");
   appendFile(SD, "/Canarinho.txt", String(valuePot_Prof).c_str());
-  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", "         ");
   appendFile(SD, "/Canarinho.txt", String(valuePot_Aileron).c_str());
-  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", "         ");
   appendFile(SD, "/Canarinho.txt", String(valuePot_Leme).c_str());
-  appendFile(SD, "/Canarinho.txt", "  ");
+  appendFile(SD, "/Canarinho.txt", "      ");
   appendFile(SD, "/Canarinho.txt", String(HP).c_str());
   client.publish("/HP", String(HP).c_str());
-  appendFile(SD, "/Canarinho.txt", " ");
+  appendFile(SD, "/Canarinho.txt", "      ");
   appendFile(SD, "/Canarinho.txt", String(AcZ/16384.0).c_str());
   client.publish("/MPUnz", String(AcZ/16384.0).c_str());
-  appendFile(SD, "/Canarinho.txt", " ");
+  appendFile(SD, "/Canarinho.txt", "      ");
   appendFile(SD, "/Canarinho.txt", String(pitch).c_str());
   client.publish("/MPUtheta", String(pitch).c_str());
-  appendFile(SD, "/Canarinho.txt", " ");
+  appendFile(SD, "/Canarinho.txt", "       ");
   appendFile(SD, "/Canarinho.txt", String(roll).c_str());
   client.publish("/MPUphi", String(roll).c_str());
   appendFile(SD, "/Canarinho.txt", "\r\n");
