@@ -59,7 +59,7 @@ int minVal=265;
 int maxVal=402;
 float x, y, z;
 int iteracoes = 50, contagemFiltro;
-float pitch, roll, pitchTotal, rollTotal;
+float pitch, roll, pitchTotal, rollTotal, pitchprefiltro, rollprefiltro;
 
 //Objeto display
 Adafruit_SSD1306 display(128, 64);
@@ -68,8 +68,8 @@ Adafruit_SSD1306 display(128, 64);
 //SSD1306 screen(0x3c, 21, 22);
 
 //Declaracoes wifi
-const char* ssid = "proxy 01"; // Enter your WiFi name
-const char* password =  "lr201314"; // Enter WiFi password
+const char* ssid = "AndroidAPA13F"; // Enter your WiFi name
+const char* password =  "kgld0025"; // Enter WiFi password
 const char* mqtt_server = "test.mosquitto.org";
 const int mqtt_port = 1883;
 WiFiClient wifiClient;
@@ -317,7 +317,7 @@ void setup() {
     display.display();
     while (1);
   }
-  //rtc.adjust(DateTime(2019, 10, 13, 17, 9, 0));  // (Ano,mês,dia,hora,minuto,segundo)
+  //rtc.adjust(DateTime(2019, 10, 16, 13, 55, 0));  // (Ano,mês,dia,hora,minuto,segundo)
 
   if(!mag.begin())
   {
@@ -386,7 +386,6 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
   reconnect();
-  
   listDir   (SD, "/", 2);    
   writeFile (SD, "/Canarinho.txt", "");
   appendFile(SD, "/Canarinho.txt", "      Tempo ");
@@ -426,12 +425,12 @@ void setup() {
 }
 
 void loop() {
-  //delayMicroseconds(10000);
+  //delayMicroseconds(1000000);
   copyconta_RPM = conta_RPM;
   contaAtualMillis = millis(); 
   subMillis = contaAtualMillis - antigoMillis;
   minutos = (subMillis/(60000));
-  RPM = copyconta_RPM/(minutos);
+  RPM = copyconta_RPM/(4*minutos);
   antigoMillis = contaAtualMillis;
   conta_RPM = 0;
   
@@ -445,21 +444,23 @@ void loop() {
   char stringrpm[10]; char stringtempo[10];
   dtostrf(RPM, 6, 0, stringrpm);
   display.clearDisplay();
-  display.setCursor(0, 45);
+  display.setFont(&FreeMonoBold18pt7b);
+  display.setCursor(0, 25);
   display.println("RPM:");
   display.setCursor(0, 60);
   display.print(stringrpm);
   display.println("[RPM]");
-
+  display.display();
+  
   DateTime now = rtc.now();
   Tin = ((now.hour()*3600)+(now.minute()*60)+(now.second()));
   dtostrf(Tin, 6, 0, stringtempo);
-  display.setCursor(0, 10);
+  /*display.setCursor(0, 10);
   display.println("Tempo:");
   display.setCursor(0, 27);
   display.print(stringtempo);
   display.println("[segs]");
-  display.display();
+  display.display();*/
   //screen.drawString(20,  20, "Tempo: "+String(Tin));
   //screen.display();
 
@@ -490,19 +491,19 @@ void loop() {
   sensors_event_t event;
   mag.getEvent(&event);
   float heading = atan2(event.magnetic.y, event.magnetic.x);
-  float declinationAngle = 5.94;
+  float declinationAngle = 0.37;
   heading += declinationAngle;
   if(heading < 0)
     heading += 2*PI;
   if(heading > 2*PI)
     heading -= 2*PI;
-  float headingDegrees = heading * 180/M_PI;
-  if(headingDegrees <= 208.00){
+  float MagBow = heading * 180/M_PI;
+  /*if(headingDegrees <= 208.00){
     MagBow = mapFloat(headingDegrees,208.00, 0.00,0.00, 208.00);
   }
   if(headingDegrees > 208.00){
     MagBow = mapFloat(headingDegrees,360.00 , 207.99, 208.01, 360.00);
-  }
+  }*/
 
   int valuePot_Prof  = analogRead(Pot3); 
   if(valuePot_Prof <= 2047){
@@ -530,8 +531,8 @@ void loop() {
   digitalWrite(S1,LOW);
   HP = bmp_2.readAltitude(101325);
 
-  roll = 0;
-  pitch = 0;
+  //roll = 0;
+  //pitch = 0;
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x3B);
   Wire.endTransmission(false);
@@ -546,11 +547,12 @@ void loop() {
   x= RAD_TO_DEG * (atan2(-yAng, -zAng)+PI);
   y= RAD_TO_DEG * (atan2(-xAng, -zAng)+PI);
   z= RAD_TO_DEG * (atan2(-yAng, -xAng)+PI);
-  pitch = x;
-  roll = y;
-  if(pitch > 180) pitch -= 360;
-  if(roll > 180) roll -= 360;
-
+  pitchprefiltro = x;
+  rollprefiltro = y;
+  if(pitchprefiltro > 180) pitchprefiltro -= 360;
+  if(rollprefiltro > 180) rollprefiltro -= 360;
+  if(abs(pitchprefiltro) < 35) pitch = pitchprefiltro;
+  if(abs(rollprefiltro) < 30) roll = rollprefiltro;
   //Tirar comentario para testar o horizonte
   /*if(contagemFiltro < iteracoes) {
     contagemFiltro++;
@@ -564,6 +566,7 @@ void loop() {
   pitchTotal = 0;
   rollTotal = 0;
   */
+    
   appendFile(SD, "/Canarinho.txt", "     ");
   appendFile(SD, "/Canarinho.txt", String(Tin).c_str());
   appendFile(SD, "/Canarinho.txt", "    ");
