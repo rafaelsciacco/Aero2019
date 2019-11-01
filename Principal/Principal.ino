@@ -48,7 +48,7 @@ int Pot3 = 32;
 //Variaveis bmps
 int S0 = 0;
 int S1 = 2;
-float HP = 0;
+float HP = 0, HPinicial = 1880;
 Adafruit_BMP085 bmp_1;
 Adafruit_BMP085 bmp_2;
 
@@ -317,7 +317,7 @@ void setup() {
     display.display();
     while (1);
   }
-  //rtc.adjust(DateTime(2019, 10, 16, 13, 55, 0));  // (Ano,mês,dia,hora,minuto,segundo)
+  //rtc.adjust(DateTime(2019, 10, 26, 15, 22, 0));  // (Ano,mês,dia,hora,minuto,segundo)
 
   if(!mag.begin())
   {
@@ -381,7 +381,6 @@ void setup() {
     while(1){};
     //return;
   }
-
   Serial.setTimeout(500);// Set time out for 
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
@@ -390,38 +389,43 @@ void setup() {
   writeFile (SD, "/Canarinho.txt", "");
   appendFile(SD, "/Canarinho.txt", "      Tempo ");
   appendFile(SD, "/Canarinho.txt", "      RPM ");
-  appendFile(SD, "/Canarinho.txt", "          XGPS  ");
-  appendFile(SD, "/Canarinho.txt", "           YGPS  ");
-  appendFile(SD, "/Canarinho.txt", "        ZGPS  ");
   appendFile(SD, "/Canarinho.txt", "      WOW  ");
-  appendFile(SD, "/Canarinho.txt", "      VCAS  ");
+  appendFile(SD, "/Canarinho.txt", "        VCAS  ");
   appendFile(SD, "/Canarinho.txt", "      MagHead ");
   appendFile(SD, "/Canarinho.txt", "      ELEV  ");
   appendFile(SD, "/Canarinho.txt", "      AIL  ");
   appendFile(SD, "/Canarinho.txt", "      RUD  ");
   appendFile(SD, "/Canarinho.txt", "      HP  ");
-  appendFile(SD, "/Canarinho.txt", "      NZ  ");
+  appendFile(SD, "/Canarinho.txt", "            NZ  ");
   appendFile(SD, "/Canarinho.txt", "      THETA ");
-  appendFile(SD, "/Canarinho.txt", "      PHI \r\n");
+  appendFile(SD, "/Canarinho.txt", "      PHI ");
+  appendFile(SD, "/Canarinho.txt", "          XGPS  ");
+  appendFile(SD, "/Canarinho.txt", "           YGPS  ");
+  appendFile(SD, "/Canarinho.txt", "        ZGPS  \r\n");
   
   appendFile(SD, "/Canarinho.txt", "    [segundos] ");
   appendFile(SD, "/Canarinho.txt", "  [RPM] ");
-  appendFile(SD, "/Canarinho.txt", "         [m] ");
-  appendFile(SD, "/Canarinho.txt", "             [m] ");
-  appendFile(SD, "/Canarinho.txt", "          [m] ");
-  appendFile(SD, "/Canarinho.txt", "       [bit] ");
-  appendFile(SD, "/Canarinho.txt", "      [m/s] ");
+  appendFile(SD, "/Canarinho.txt", "    [bit] ");
+  appendFile(SD, "/Canarinho.txt", "        [m/s] ");
   appendFile(SD, "/Canarinho.txt", "       [deg] ");
   appendFile(SD, "/Canarinho.txt", "       [deg] ");
   appendFile(SD, "/Canarinho.txt", "     [deg] ");
   appendFile(SD, "/Canarinho.txt", "     [deg] ");
   appendFile(SD, "/Canarinho.txt", "     [ft] ");
-  appendFile(SD, "/Canarinho.txt", "      [g] ");
+  appendFile(SD, "/Canarinho.txt", "            [g] ");
   appendFile(SD, "/Canarinho.txt", "      [deg] ");
-  appendFile(SD, "/Canarinho.txt", "     [deg] \r\n");
+  appendFile(SD, "/Canarinho.txt", "     [deg] ");
+  appendFile(SD, "/Canarinho.txt", "         [m] ");
+  appendFile(SD, "/Canarinho.txt", "             [m] ");
+  appendFile(SD, "/Canarinho.txt", "          [m] \r\n");
   
   //Serial.println("  RPM         copyconta_RPM");
+  display.clearDisplay();
+  display.setCursor(0,25);
+  display.println("GRAVANDO");
+  display.display();
   
+  delayMicroseconds(20000000);
 }
 
 void loop() {
@@ -455,6 +459,9 @@ void loop() {
   DateTime now = rtc.now();
   Tin = ((now.hour()*3600)+(now.minute()*60)+(now.second()));
   dtostrf(Tin, 6, 0, stringtempo);
+  if (Tin == 0.00){
+    rtc.adjust(DateTime(2019, 10, 26, 16, 0, 0));  // (Ano,mês,dia,hora,minuto,segundo)
+  }
   /*display.setCursor(0, 10);
   display.println("Tempo:");
   display.setCursor(0, 27);
@@ -475,7 +482,7 @@ void loop() {
   float altitudeGPS;
   float altitudeResult;
   altitudeGPS = gps1.f_altitude();
-  if ((altitudeGPS != TinyGPS::GPS_INVALID_ALTITUDE) && (altitudeGPS != 1000000)) {
+  /*if ((altitudeGPS != TinyGPS::GPS_INVALID_ALTITUDE) && (altitudeGPS != 1000000)) {
     altitudeResult = (altitudeGPS - Altitude_soloLocal);
   if(altitudeResult > 3){
     WOW = 1;
@@ -484,9 +491,9 @@ void loop() {
     WOW = 0;
   }
   altitudeResult = 0;
-  }
-  float velocidademps; float velocidadekmph;
-  velocidademps = gps1.f_speed_mps();
+  }*/
+  //float velocidademps; float velocidadekmph;
+  //velocidademps = gps1.f_speed_mps();
 
   sensors_event_t event;
   mag.getEvent(&event);
@@ -497,14 +504,14 @@ void loop() {
     heading += 2*PI;
   if(heading > 2*PI)
     heading -= 2*PI;
-  float MagBow = heading * 180/M_PI;
-  /*if(headingDegrees <= 208.00){
-    MagBow = mapFloat(headingDegrees,208.00, 0.00,0.00, 208.00);
+  float headingDegrees = heading * 180/M_PI;
+  if(headingDegrees <= 264.00){
+    MagBow = mapFloat(headingDegrees,264.00, 0.00,0.00, 264.00);
   }
-  if(headingDegrees > 208.00){
-    MagBow = mapFloat(headingDegrees,360.00 , 207.99, 208.01, 360.00);
-  }*/
-
+  if(headingDegrees > 264.00){
+    MagBow = mapFloat(headingDegrees,360.00 , 263.99, 264.01, 360.00);
+  }
+  
   int valuePot_Prof  = analogRead(Pot3); 
   if(valuePot_Prof <= 2047){
     valuePot_Prof  =  map(valuePot_Prof,0,2047,90,0);
@@ -526,11 +533,24 @@ void loop() {
   else{
     valuePot_Leme  =  map(valuePot_Leme,2048,4095,0,-90);
   }
-
+  digitalWrite(S0,LOW);
+  digitalWrite(S1,LOW);
+  double p_Estatica = (bmp_1.readPressure() + 325);
   digitalWrite(S0,HIGH);
   digitalWrite(S1,LOW);
-  HP = bmp_2.readAltitude(101325);
-
+  HP = bmp_2.readAltitude(101325)*3.28084;
+  altitudeResult = HP - HPinicial;
+  if(altitudeResult > 3){
+    WOW = 1;
+  }
+  if(altitudeResult < 3){
+    WOW = 0;
+  }
+  altitudeResult = 0;
+  double p_Total    = bmp_2.readPressure();
+  double calc       = ((2.*(p_Total - p_Estatica))/ 0.925925);
+  double velocidademps = sqrt(calc);
+  if (calc < 0) velocidademps = 0.00;
   //roll = 0;
   //pitch = 0;
   Wire.beginTransmission(MPU_addr);
@@ -571,26 +591,17 @@ void loop() {
   appendFile(SD, "/Canarinho.txt", String(Tin).c_str());
   appendFile(SD, "/Canarinho.txt", "    ");
   appendFile(SD, "/Canarinho.txt", String(RPM).c_str());
-  if (latitude != TinyGPS::GPS_INVALID_F_ANGLE) {
-    appendFile(SD, "/Canarinho.txt", "        ");
-    appendFile(SD, "/Canarinho.txt", String(latitude,6).c_str());
-  }
-  if (longitude != TinyGPS::GPS_INVALID_F_ANGLE) {
-    appendFile(SD, "/Canarinho.txt", "       ");
-    appendFile(SD, "/Canarinho.txt", String(longitude,6).c_str());
-  }
-  if ((altitudeGPS != TinyGPS::GPS_INVALID_ALTITUDE) && (altitudeGPS != 1000000)) {
-    appendFile(SD, "/Canarinho.txt", "      ");
-    appendFile(SD, "/Canarinho.txt", String(altitudeGPS).c_str());
-    appendFile(SD, "/Canarinho.txt", "        ");
-    appendFile(SD, "/Canarinho.txt", String(WOW).c_str());
-    client.publish("/WOW", String(WOW).c_str());
-  }
-  if (velocidademps != TinyGPS::GPS_INVALID_F_SPEED){
+  appendFile(SD, "/Canarinho.txt", "        ");
+  appendFile(SD, "/Canarinho.txt", String(WOW).c_str());
+  client.publish("/WOW", String(WOW).c_str());
+  /*if (velocidademps != TinyGPS::GPS_INVALID_F_SPEED){
     appendFile(SD, "/Canarinho.txt","         ");
     appendFile(SD, "/Canarinho.txt", String(velocidademps).c_str());
     client.publish("/VCAS", String(velocidademps).c_str());
-  }
+  }*/
+  appendFile(SD, "/Canarinho.txt","         ");
+  appendFile(SD, "/Canarinho.txt", String(velocidademps).c_str());
+  client.publish("/VCAS", String(velocidademps).c_str());
   appendFile(SD, "/Canarinho.txt", "        ");
   appendFile(SD, "/Canarinho.txt", String(MagBow).c_str());
   client.publish("/MAG", String(MagBow).c_str());
@@ -600,7 +611,7 @@ void loop() {
   appendFile(SD, "/Canarinho.txt", String(valuePot_Aileron).c_str());
   appendFile(SD, "/Canarinho.txt", "         ");
   appendFile(SD, "/Canarinho.txt", String(valuePot_Leme).c_str());
-  appendFile(SD, "/Canarinho.txt", "      ");
+  appendFile(SD, "/Canarinho.txt", "         ");
   appendFile(SD, "/Canarinho.txt", String(HP).c_str());
   client.publish("/HP", String(HP).c_str());
   appendFile(SD, "/Canarinho.txt", "      ");
@@ -612,6 +623,18 @@ void loop() {
   appendFile(SD, "/Canarinho.txt", "       ");
   appendFile(SD, "/Canarinho.txt", String(roll).c_str());
   client.publish("/MPUphi", String(roll).c_str());
+  if (latitude != TinyGPS::GPS_INVALID_F_ANGLE) {
+    appendFile(SD, "/Canarinho.txt", "        ");
+    appendFile(SD, "/Canarinho.txt", String(latitude,6).c_str());
+  }
+  if (longitude != TinyGPS::GPS_INVALID_F_ANGLE) {
+    appendFile(SD, "/Canarinho.txt", "       ");
+    appendFile(SD, "/Canarinho.txt", String(longitude,6).c_str());
+  }
+  if ((altitudeGPS != TinyGPS::GPS_INVALID_ALTITUDE) && (altitudeGPS != 1000000)) {
+    appendFile(SD, "/Canarinho.txt", "      ");
+    appendFile(SD, "/Canarinho.txt", String(altitudeGPS).c_str());
+  }
   appendFile(SD, "/Canarinho.txt", "\r\n");
-  
+  Serial.println(Tin);
 }
